@@ -28,16 +28,31 @@ let prevOK = false;
 let correctCount = 0;
 let remainingCount = vocabList.length;
 
+let canvasW, canvasH;
+
 function setup() {
-  createCanvas(400, 400);
-  video = createCapture(VIDEO);
-  video.size(width, height);
+  canvasW = windowWidth;
+  canvasH = windowHeight;
+  createCanvas(canvasW, canvasH);
+  video = createCapture(VIDEO, videoReady);
+  video.size(canvasW, canvasH);
   video.hide();
 
-  handpose = ml5.handpose(video, modelReady);
-  handpose.on("predict", gotHands);
+  // 動態設定分類區塊位置
+  let blockW = 120, blockH = 80, gap = 40;
+  let totalW = blockW * 3 + gap * 2;
+  let startX = (canvasW - totalW) / 2;
+  categories = [
+    { name: "工具", x: startX, y: canvasH - blockH - 60, w: blockW, h: blockH },
+    { name: "數位科技", x: startX + blockW + gap, y: canvasH - blockH - 60, w: blockW, h: blockH },
+    { name: "學習理論", x: startX + (blockW + gap) * 2, y: canvasH - blockH - 60, w: blockW, h: blockH }
+  ];
 
   pickVocab();
+}
+
+function videoReady() {
+  console.log("Camera ready!");
 }
 
 function pickVocab() {
@@ -48,8 +63,8 @@ function pickVocab() {
   }
   let idx = floor(random(vocabList.length));
   currentVocab = vocabList[idx];
-  dragX = width / 2;
-  dragY = 60;
+  dragX = canvasW / 2;
+  dragY = 100;
   resultMsg = "";
   remainingCount = vocabList.length;
 }
@@ -64,15 +79,23 @@ function gotHands(results) {
 
 function draw() {
   background(220);
-  image(video, 0, 0, width, height);
+  if (video.loadedmetadata) {
+    image(video, 0, 0, canvasW, canvasH);
+  } else {
+    fill(0);
+    textSize(32);
+    textAlign(CENTER, CENTER);
+    text("正在開啟相機...", canvasW / 2, canvasH / 2);
+    return;
+  }
 
   drawKeypoints();
 
   // 左上角顯示答對數與剩餘題目數
   fill(0);
-  textSize(18);
+  textSize(22);
   textAlign(LEFT, TOP);
-  text(`答對：${correctCount}  剩餘：${remainingCount}`, 10, 10);
+  text(`答對：${correctCount}  剩餘：${remainingCount}`, 20, 20);
 
   // 手勢拖曳詞彙
   let handOK = false;
@@ -116,7 +139,6 @@ function draw() {
           if (c.name === currentVocab.category) {
             resultMsg = "答對了！";
             correctCount++;
-            // 移除已答題目
             vocabList = vocabList.filter(v => v.word !== currentVocab.word);
           } else {
             resultMsg = "再試一次！";
@@ -125,35 +147,53 @@ function draw() {
         }
       }
       handDragging = false;
-      dragX = width / 2;
-      dragY = 60;
+      dragX = canvasW / 2;
+      dragY = 100;
     }
     prevOK = handOK;
   }
 
-  // 顯示詞彙
+  // 顯示詞彙（正中央上方）
   fill(255, 200, 0);
   stroke(0);
-  rect(dragX - 50, dragY - 25, 100, 50, 10);
+  rect(dragX - 80, dragY - 40, 160, 80, 16);
   fill(0);
-  textSize(24);
+  textSize(36);
   textAlign(CENTER, CENTER);
   text(currentVocab.word, dragX, dragY);
 
   // 顯示分類區塊
+  textSize(28);
   for (let c of categories) {
     fill(200);
-    rect(c.x, c.y, c.w, c.h, 10);
+    rect(c.x, c.y, c.w, c.h, 16);
     fill(0);
-    textSize(18);
     textAlign(CENTER, CENTER);
     text(c.name, c.x + c.w / 2, c.y + c.h / 2);
   }
 
   // 顯示結果
   fill(0);
-  textSize(24);
-  text(resultMsg, width / 2, height - 30);
+  textSize(32);
+  textAlign(CENTER, CENTER);
+  text(resultMsg, canvasW / 2, canvasH - 30);
+}
+
+function windowResized() {
+  canvasW = windowWidth;
+  canvasH = windowHeight;
+  resizeCanvas(canvasW, canvasH);
+  // 重新計算分類區塊位置
+  let blockW = 120, blockH = 80, gap = 40;
+  let totalW = blockW * 3 + gap * 2;
+  let startX = (canvasW - totalW) / 2;
+  categories = [
+    { name: "工具", x: startX, y: canvasH - blockH - 60, w: blockW, h: blockH },
+    { name: "數位科技", x: startX + blockW + gap, y: canvasH - blockH - 60, w: blockW, h: blockH },
+    { name: "學習理論", x: startX + (blockW + gap) * 2, y: canvasH - blockH - 60, w: blockW, h: blockH }
+  ];
+  dragX = canvasW / 2;
+  dragY = 100;
 }
 
 // 畫出手部關鍵點
